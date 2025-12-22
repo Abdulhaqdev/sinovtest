@@ -46,6 +46,7 @@
     "cmdk": "latest",
     "date-fns": "4.1.0",
     "embla-carousel-react": "latest",
+    "fix-react2shell-next": "^1.1.4",
     "geist": "latest",
     "input-otp": "latest",
     "lucide-react": "^0.454.0",
