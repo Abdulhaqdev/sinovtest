@@ -33,6 +33,13 @@ class ApiService {
     }
   }
 
+  private handleAuthError(): void {
+    localStorage.removeItem(TOKENS_STORAGE_KEY)
+    if (typeof window !== "undefined") {
+      window.location.href = "/login"
+    }
+  }
+
   private getAuthHeader(): Record<string, string> {
     const tokens = this.getTokens()
     return tokens?.access ? { Authorization: `Bearer ${tokens.access}` } : {}
@@ -62,6 +69,10 @@ class ApiService {
       | undefined
 
     if (!response.ok) {
+      if (response.status === 401 && requiresAuth) {
+        this.handleAuthError()
+      }
+
       const errorMessage =
         (data as ApiError | undefined)?.detail ||
         (data as ApiError | undefined)?.message ||

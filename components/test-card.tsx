@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge"
-import { StarIcon, MessageCircleIcon, BookOpenIcon, ClockIcon, HelpCircleIcon } from "lucide-react"
+import { BookOpenIcon, ClockIcon, HelpCircleIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
-import { Test } from "@/lib/test-api"
+import type { Test } from "@/lib/test-api"
 
 interface TestCardProps extends Test {
   color?: "mint" | "yellow" | "lime" | "peach" | "sage"
@@ -31,6 +31,8 @@ const difficultyColors = {
 export function TestCard({
   test_id,
   test_name,
+  block_id,
+  subject_id,
   subject_name,
   is_payable,
   price,
@@ -40,12 +42,11 @@ export function TestCard({
   difficulty,
   color = "mint",
 }: TestCardProps) {
-  // Random color if not provided
   const colors: Array<"mint" | "yellow" | "lime" | "peach" | "sage"> = ["mint", "yellow", "lime", "peach", "sage"]
   const cardColor = color || colors[test_id % colors.length]
 
   return (
-    <Link href={`/test/${test_id}`}>
+    <Link href={`/test/${test_id}?block_id=${block_id}&subject_id=${subject_id}`}>
       <div
         className={cn(
           "relative overflow-hidden rounded-3xl p-6 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer",

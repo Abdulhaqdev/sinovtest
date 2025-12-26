@@ -10,6 +10,7 @@ export const useProfile = () => {
   return useQuery({
     queryKey: PROFILE_QUERY_KEY,
     queryFn: profileApi.getProfile,
+    retry: false,
   })
 }
 

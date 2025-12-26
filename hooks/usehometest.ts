@@ -9,3 +9,11 @@ export const useHomeTests = () => {
     queryFn: testApi.getHomeTests,
   })
 }
+
+export const useTestDetail = (testId: number, blockId: number, subjectId: number) => {
+  return useQuery({
+    queryKey: ["test", "detail", testId, blockId, subjectId],
+    queryFn: () => testApi.getTestDetail(testId, blockId, subjectId),
+    enabled: !!testId && !!blockId && !!subjectId,
+  })
+}

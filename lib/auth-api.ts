@@ -2,6 +2,7 @@
 
 import { apiService } from "./api-service"
 
+const TOKENS_STORAGE_KEY = "auth_tokens"
 
 export async function sendOtp(phoneNumber: string) {
   return apiService.post<{ detail: string }>("users/auth/send-otp/", {
@@ -22,8 +23,6 @@ export async function verifyOtp(phoneNumber: string, otpCode: string) {
   })
 }
 
-const TOKENS_STORAGE_KEY = "auth_tokens"
-
 export const authUtils = {
   getTokens: () => {
     try {
@@ -40,5 +39,8 @@ export const authUtils = {
 
   logout: () => {
     localStorage.removeItem(TOKENS_STORAGE_KEY)
+    if (typeof window !== "undefined") {
+      window.location.href = "/login"
+    }
   },
 }
