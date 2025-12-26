@@ -3,7 +3,7 @@
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { AlertCircle, Clock, Pause, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
+import { AlertCircle, Clock, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
 import { use, useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -33,7 +33,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
   const [currentQuestion, setCurrentQuestion] = useState(0)
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
-  const [isPaused, setIsPaused] = useState(false)
   const [showQuestionNav, setShowQuestionNav] = useState(false)
 
   const { data: testData, isLoading, error } = useQuery({
@@ -58,7 +57,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
 
   // Timer
   useEffect(() => {
-    if (isPaused || timeRemaining === 0) return
+    if (timeRemaining === 0) return
 
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -71,7 +70,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [isPaused, timeRemaining])
+  }, [timeRemaining])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -257,7 +256,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                         value={answer.id}
                         checked={selectedAnswers[currentQuestionData.question.id] === answer.id}
                         onChange={() => handleAnswerSelect(answer.id)}
-                        className="mt-0.5 md:mt-1 h-4 w-4 md:h-5 md:w-5 cursor-pointer flex-shrink-0"
+                        className="mt-0.5 md:mt-1 h-4 w-4 md:h-5 md:w-5 cursor-pointer shrink-0"
                       />
                       <div className="flex-1">
                         {answer.answer_image && (
@@ -313,26 +312,16 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
           {/* Sidebar */}
           <div className="w-full lg:w-[380px] order-1 lg:order-2">
             <div className="lg:sticky lg:top-4 space-y-4">
-              {/* Controls */}
+              {/* Finish Button */}
               <Card>
                 <CardContent className="p-3 md:p-4">
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="flex-1 gap-2 rounded-full text-xs md:text-sm"
-                      onClick={() => setIsPaused(!isPaused)}
-                    >
-                      <Pause className="h-3 w-3 md:h-4 md:w-4" />
-                      {isPaused ? "Davom ettirish" : "To'xtatish"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 rounded-full text-xs md:text-sm"
-                      onClick={handleFinish}
-                    >
-                      Yakunlash
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-full text-xs md:text-sm"
+                    onClick={handleFinish}
+                  >
+                    Testni yakunlash
+                  </Button>
                 </CardContent>
               </Card>
 
