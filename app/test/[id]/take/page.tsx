@@ -11,6 +11,16 @@ import { useQuery } from "@tanstack/react-query"
 import { testApi, type Question } from "@/lib/test-api"
 import Image from "next/image"
 
+// Base URL for images
+const IMAGE_BASE_URL = "https://v1.backend.sinovtest.uz"
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath: string | null) => {
+  if (!imagePath) return null
+  if (imagePath.startsWith("http")) return imagePath
+  return `${IMAGE_BASE_URL}${imagePath}`
+}
+
 export default function TakeTestPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const searchParams = useSearchParams()
@@ -42,7 +52,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
   // Use total_time from API response
   useEffect(() => {
     if (testData?.total_time) {
-      // Convert minutes to seconds
       setTimeRemaining(testData.total_time * 60)
     }
   }, [testData])
@@ -54,7 +63,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
         if (prev <= 1) {
-          // Time is up, auto submit
           handleFinish()
           return 0
         }
@@ -141,7 +149,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     )
   }
 
-  // Calculate time warning threshold (when 10% of time remaining)
   const totalSeconds = testData.total_time * 60
   const isTimeWarning = timeRemaining <= totalSeconds * 0.1 && timeRemaining > 0
 
@@ -218,11 +225,12 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                   {currentQuestionData?.question.question_image && (
                     <div className="mt-4 mb-4">
                       <Image
-                        src={currentQuestionData.question.question_image}
+                        src={getImageUrl(currentQuestionData.question.question_image) || ""}
                         alt="Question"
                         width={600}
                         height={400}
                         className="rounded-lg max-w-full h-auto"
+                        unoptimized
                       />
                     </div>
                   )}
@@ -253,13 +261,16 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                       />
                       <div className="flex-1">
                         {answer.answer_image && (
-                          <Image
-                            src={answer.answer_image}
-                            alt={`Answer ${index + 1}`}
-                            width={300}
-                            height={200}
-                            className="rounded-lg mb-2 max-w-full h-auto"
-                          />
+                          <div className="mb-2">
+                            <Image
+                              src={getImageUrl(answer.answer_image) || ""}
+                              alt={`Answer ${index + 1}`}
+                              width={300}
+                              height={200}
+                              className="rounded-lg max-w-full h-auto"
+                              unoptimized
+                            />
+                          </div>
                         )}
                         <span className="text-sm md:text-base text-gray-700 dark:text-gray-300">
                           {answer.answer_text}

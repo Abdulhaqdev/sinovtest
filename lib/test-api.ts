@@ -54,6 +54,7 @@ export type TestDetailResponse = {
   subject: Subject[]
   blocks: Block[]
   suggestion: TestGroup[]
+  can_choose_count: number
 }
 
 export type Answer = {

@@ -66,6 +66,11 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
       return
     }
 
+    // Check if selected subjects count matches required count
+    if (testDetail && selectedSubjects.length !== testDetail.can_choose_count) {
+      return
+    }
+
     try {
       const result = await startTestMutation.mutateAsync({
         type_id: testId,
@@ -73,7 +78,6 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
         subject_id: selectedSubjects,
       })
 
-      // Navigate to test taking page with questions
       router.push(`/test/${testId}/take?block_id=${selectedBlock}&subject_ids=${selectedSubjects.join(",")}`)
     } catch (error) {
       console.error("Failed to start test:", error)
@@ -81,10 +85,17 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   const toggleSubject = (subjectId: number) => {
+    if (!testDetail) return
+
     setSelectedSubjects(prev => {
       if (prev.includes(subjectId)) {
         return prev.filter(id => id !== subjectId)
       } else {
+        // Check if we can add more subjects
+        if (prev.length >= testDetail.can_choose_count) {
+          // Remove first selected and add new one
+          return [...prev.slice(1), subjectId]
+        }
         return [...prev, subjectId]
       }
     })
@@ -117,7 +128,13 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
     )
   }
 
-  const canStartTest = isAuthenticated && profile?.name && profile?.surname && selectedBlock && selectedSubjects.length > 0
+  const canStartTest = isAuthenticated && 
+    profile?.name && 
+    profile?.surname && 
+    selectedBlock && 
+    selectedSubjects.length === testDetail.can_choose_count
+
+  const isMaxSelected = selectedSubjects.length >= testDetail.can_choose_count
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -170,10 +187,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
               </h3>
               <div className="grid gap-4 md:grid-cols-2">
                 {testDetail.blocks.map((block) => (
-                  <Card 
-                    key={block.id}
-                  
-                  >
+                  <Card key={block.id}>
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-2">
@@ -221,23 +235,54 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
 
-            {/* Multi-Select Subjects */}
+            {/* Multi-Select Subjects with Limit */}
             <div className="mb-8">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Fanlarni tanlang ({selectedSubjects.length}/{testDetail.subject.length} tanlandi)
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Fanlarni tanlang
+                </h3>
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "text-sm font-medium",
+                    selectedSubjects.length === testDetail.can_choose_count
+                      ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300 dark:border-green-700"
+                      : selectedSubjects.length > 0
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                        : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-700"
+                  )}
+                >
+                  {selectedSubjects.length}/{testDetail.can_choose_count} ta tanlandi
+                </Badge>
+              </div>
+
+              {/* Info Alert */}
+              <Alert className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
+                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-800 dark:text-blue-300">
+                  Aynan <strong>{testDetail.can_choose_count}</strong> ta fan tanlashingiz kerak.
+                  {isMaxSelected && selectedSubjects.length < testDetail.can_choose_count && 
+                    " Yangi fan tanlash uchun birinchi tanlangan fan o'chiriladi."}
+                </AlertDescription>
+              </Alert>
+
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {testDetail.subject.map((subject) => {
                   const isSelected = selectedSubjects.includes(subject.id)
+                  const isDisabled = !isSelected && isMaxSelected
+                  
                   return (
                     <button
                       key={subject.id}
-                      onClick={() => toggleSubject(subject.id)}
+                      onClick={() => !isDisabled && toggleSubject(subject.id)}
+                      disabled={isDisabled}
                       className={cn(
                         "relative flex items-center justify-between h-auto py-3 px-4 text-left rounded-lg border-2 transition-all",
                         isSelected 
                           ? "border-blue-500 bg-blue-50 dark:bg-blue-950 dark:border-blue-400" 
-                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                          : isDisabled
+                            ? "border-gray-200 dark:border-gray-700 opacity-50 cursor-not-allowed"
+                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer"
                       )}
                     >
                       <span className={cn(
@@ -303,7 +348,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
                     <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                      Fanlar ({selectedSubjects.length} ta)
+                      Fanlar ({selectedSubjects.length}/{testDetail.can_choose_count} ta)
                     </div>
                     <div className="font-medium text-gray-900 dark:text-white text-sm">
                       {selectedSubjects.length > 0
@@ -332,7 +377,9 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                 ) : !profile?.name || !profile?.surname ? (
                   "Profilni to'ldiring"
                 ) : selectedSubjects.length === 0 ? (
-                  "Fanni tanlang"
+                  `${testDetail.can_choose_count} ta fan tanlang`
+                ) : selectedSubjects.length !== testDetail.can_choose_count ? (
+                  `Yana ${testDetail.can_choose_count - selectedSubjects.length} ta fan tanlang`
                 ) : (
                   "Testni boshlash"
                 )}

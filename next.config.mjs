@@ -6,8 +6,14 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  images: {
-    unoptimized: true,
+ images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "v1.backend.sinovtest.uz",
+        pathname: "/media/**",
+      },
+    ],
   },
 }
 
