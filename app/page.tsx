@@ -3,7 +3,6 @@
 import { TestCard } from "@/components/test-card"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
-
 import { Loader2 } from "lucide-react"
 import { useState } from "react"
 import { useHomeTests } from "@/hooks/usehometest"
@@ -58,15 +57,10 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {group.tests.map((test, testIndex) => (
+              {group.tests.map((test) => (
                 <TestCard 
-                  key={`${test.test_id}-${test.subject_id}`} 
+                  key={`${test.test_id}-${test.block_id}-${test.subject_id}`} 
                   {...test}
-                  color={
-                    ["mint", "yellow", "lime", "peach", "sage"][
-                      (groupIndex * group.tests.length + testIndex) % 5
-                    ] as "mint" | "yellow" | "lime" | "peach" | "sage"
-                  }
                 />
               ))}
             </div>

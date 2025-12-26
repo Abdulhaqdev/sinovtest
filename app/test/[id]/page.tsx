@@ -4,7 +4,7 @@ import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TestCard } from "@/components/test-card"
 import { 
   ChevronRight, 
   Share2, 
@@ -12,7 +12,8 @@ import {
   FileQuestion, 
   Target,
   Loader2,
-  AlertCircle 
+  AlertCircle,
+  Check
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -21,6 +22,7 @@ import { authUtils } from "@/lib/auth-api"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useTestDetail } from "@/hooks/usehometest"
 import { useProfile } from "@/hooks/user-update"
+import { cn } from "@/lib/utils"
 
 export default function TestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -31,10 +33,12 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
   const blockIdParam = searchParams.get("block_id")
   const subjectIdParam = searchParams.get("subject_id")
   
-  const [selectedBlock, setSelectedBlock] = useState<number>(blockIdParam ? Number.parseInt(blockIdParam) : 0)
-  const [selectedSubject, setSelectedSubject] = useState<number>(subjectIdParam ? Number.parseInt(subjectIdParam) : 0)
+  const selectedBlock = blockIdParam ? Number.parseInt(blockIdParam) : 0
+  const [selectedSubjects, setSelectedSubjects] = useState<number[]>(
+    subjectIdParam ? [Number.parseInt(subjectIdParam)] : []
+  )
 
-  const { data: testDetail, isLoading, error } = useTestDetail(testId, selectedBlock, selectedSubject)
+  const { data: testDetail, isLoading, error } = useTestDetail(testId, selectedBlock, selectedSubjects[0] || 0)
   const { data: profile, isLoading: profileLoading } = useProfile()
 
   const isAuthenticated = authUtils.isAuthenticated()
@@ -56,21 +60,23 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
       return
     }
 
-    if (!selectedBlock || !selectedSubject) {
+    if (!selectedBlock || selectedSubjects.length === 0) {
       return
     }
 
-    router.push(`/test/${testId}/take?block_id=${selectedBlock}&subject_id=${selectedSubject}`)
+    // Navigate to test with selected subjects
+    const subjectIds = selectedSubjects.join(",")
+    router.push(`/test/${testId}/take?block_id=${selectedBlock}&subject_ids=${subjectIds}`)
   }
 
-  const handleBlockSelect = (blockId: number) => {
-    setSelectedBlock(blockId)
-    router.push(`/test/${testId}?block_id=${blockId}&subject_id=${selectedSubject}`, { scroll: false })
-  }
-
-  const handleSubjectSelect = (subjectId: number) => {
-    setSelectedSubject(subjectId)
-    router.push(`/test/${testId}?block_id=${selectedBlock}&subject_id=${subjectId}`, { scroll: false })
+  const toggleSubject = (subjectId: number) => {
+    setSelectedSubjects(prev => {
+      if (prev.includes(subjectId)) {
+        return prev.filter(id => id !== subjectId)
+      } else {
+        return [...prev, subjectId]
+      }
+    })
   }
 
   if (isLoading || profileLoading) {
@@ -100,7 +106,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
     )
   }
 
-  const canStartTest = isAuthenticated && profile?.name && profile?.surname && selectedBlock && selectedSubject
+  const canStartTest = isAuthenticated && profile?.name && profile?.surname && selectedBlock && selectedSubjects.length > 0
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -146,89 +152,128 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
               </Alert>
             )}
 
-            {/* Selection Tabs */}
-            <Tabs defaultValue="blocks" className="mb-8">
-              <TabsList className="grid w-full grid-cols-2 rounded-xl bg-gray-100 dark:bg-gray-900 p-1">
-                <TabsTrigger value="blocks" className="rounded-lg">
-                  Bloklar
-                </TabsTrigger>
-                <TabsTrigger value="subjects" className="rounded-lg">
-                  Fanlar
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="blocks" className="space-y-4 mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Blokni tanlang
-                </h3>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {testDetail.blocks.map((block) => (
-                    <Card
-                      key={block.id}
-                      className={`cursor-pointer transition-all hover:shadow-md ${
-                        selectedBlock === block.id
-                          ? "ring-2 ring-blue-500 dark:ring-blue-400"
-                          : ""
-                      }`}
-                      onClick={() => handleBlockSelect(block.id)}
-                    >
-                      <CardContent className="p-6">
-                        <div className="flex items-start justify-between mb-3">
+            {/* All Blocks - Display Only */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Bloklar haqida ma'lumot
+              </h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                {testDetail.blocks.map((block) => (
+                  <Card 
+                    key={block.id}
+                    
+                  >
+                    <CardContent className="p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2">
                           <h4 className="font-bold text-gray-900 dark:text-white">{block.name}</h4>
-                          <Badge
-                            variant="outline"
-                            className={`
-                              ${block.difficulty === "easy" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0" : ""}
-                              ${block.difficulty === "medium" ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 border-0" : ""}
-                              ${block.difficulty === "hard" ? "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-0" : ""}
-                            `}
-                          >
-                            {block.difficulty === "easy" && "Oson"}
-                            {block.difficulty === "medium" && "O'rta"}
-                            {block.difficulty === "hard" && "Qiyin"}
-                          </Badge>
+                          {block.id === selectedBlock && (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs">
+                              Tanlangan
+                            </Badge>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                          {block.description}
-                        </p>
-                        <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            <span>{block.time_block} daqiqa</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <FileQuestion className="h-4 w-4" />
-                            <span>{block.questions_limit} ta savol</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Target className="h-4 w-4" />
-                            <span>{block.ball_block} ball har bir savol uchun</span>
-                          </div>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "border-0",
+                            block.difficulty === "easy" && "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+                            block.difficulty === "medium" && "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300",
+                            block.difficulty === "hard" && "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
+                          )}
+                        >
+                          {block.difficulty === "easy" && "Oson"}
+                          {block.difficulty === "medium" && "O'rta"}
+                          {block.difficulty === "hard" && "Qiyin"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                        {block.description}
+                      </p>
+                      <div className="grid grid-cols-3 gap-3 text-sm text-gray-600 dark:text-gray-400">
+                        <div className="flex flex-col items-start gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span className="text-xs">{block.time_block} daqiqa</span>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </TabsContent>
+                        <div className="flex flex-col items-start gap-1">
+                          <FileQuestion className="h-4 w-4" />
+                          <span className="text-xs">{block.questions_limit} ta</span>
+                        </div>
+                        <div className="flex flex-col items-start gap-1">
+                          <Target className="h-4 w-4" />
+                          <span className="text-xs">{block.ball_block} ball</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
 
-              <TabsContent value="subjects" className="space-y-4 mt-6">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Fanni tanlang ({testDetail.subject.length} ta)
-                </h3>
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {testDetail.subject.map((subject) => (
-                    <Button
+            {/* Multi-Select Subjects */}
+            <div className="mb-8">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Fanlarni tanlang ({selectedSubjects.length}/{testDetail.subject.length} tanlandi)
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {testDetail.subject.map((subject) => {
+                  const isSelected = selectedSubjects.includes(subject.id)
+                  return (
+                    <button
                       key={subject.id}
-                      variant={selectedSubject === subject.id ? "default" : "outline"}
-                      className="justify-start h-auto py-3 px-4 text-left"
-                      onClick={() => handleSubjectSelect(subject.id)}
+                      onClick={() => toggleSubject(subject.id)}
+                      className={cn(
+                        "relative flex items-center justify-between h-auto py-3 px-4 text-left rounded-lg border-2 transition-all",
+                        isSelected 
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950 dark:border-blue-400" 
+                          : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                      )}
                     >
-                      {subject.name}
-                    </Button>
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
+                      <span className={cn(
+                        "text-sm font-medium",
+                        isSelected 
+                          ? "text-blue-900 dark:text-blue-100" 
+                          : "text-gray-900 dark:text-white"
+                      )}>
+                        {subject.name}
+                      </span>
+                      {isSelected && (
+                        <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 ml-2" />
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Suggestions */}
+            {testDetail.suggestion && testDetail.suggestion.length > 0 && (
+              <div className="mt-12">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                  O'xshash testlar
+                </h2>
+                {testDetail.suggestion.map((group, groupIndex) => (
+                  <div key={groupIndex} className="mb-8">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {group.type}
+                      </h3>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {group.tests.length} ta test
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {group.tests.map((test) => (
+                        <TestCard 
+                          key={`${test.test_id}-${test.block_id}-${test.subject_id}`} 
+                          {...test}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -242,16 +287,19 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
                     <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Blok</div>
                     <div className="font-medium text-gray-900 dark:text-white">
-                      {selectedBlock
-                        ? testDetail.blocks.find((b) => b.id === selectedBlock)?.name
-                        : "Tanlanmagan"}
+                      {testDetail.blocks.find(b => b.id === selectedBlock)?.name || "Tanlanmagan"}
                     </div>
                   </div>
                   <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Fan</div>
-                    <div className="font-medium text-gray-900 dark:text-white">
-                      {selectedSubject
-                        ? testDetail.subject.find((s) => s.id === selectedSubject)?.name
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      Fanlar ({selectedSubjects.length} ta)
+                    </div>
+                    <div className="font-medium text-gray-900 dark:text-white text-sm">
+                      {selectedSubjects.length > 0
+                        ? selectedSubjects
+                            .map(id => testDetail.subject.find(s => s.id === id)?.name)
+                            .filter(Boolean)
+                            .join(", ")
                         : "Tanlanmagan"}
                     </div>
                   </div>
@@ -267,8 +315,8 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                   ? "Kirish kerak"
                   : !profile?.name || !profile?.surname
                     ? "Profilni to'ldiring"
-                    : !selectedBlock || !selectedSubject
-                      ? "Blok va fanni tanlang"
+                    : selectedSubjects.length === 0
+                      ? "Fanni tanlang"
                       : "Testni boshlash"}
               </Button>
 

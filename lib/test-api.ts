@@ -11,6 +11,10 @@ export type Test = {
   block_id: number
   subject_id: number
   subject_name: string
+  icon: string
+  category: string
+  backgroundColor: string
+  darkBackgroundColor: string
   is_payable: boolean
   price: number
   description: string
@@ -49,6 +53,7 @@ export type TestDetailResponse = {
   }
   subject: Subject[]
   blocks: Block[]
+  suggestion: TestGroup[]
 }
 
 export const testApi = {
