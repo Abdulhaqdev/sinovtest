@@ -23,6 +23,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useTestDetail } from "@/hooks/usehometest"
 import { useProfile } from "@/hooks/user-update"
 import { cn } from "@/lib/utils"
+import { useStartTest } from "@/hooks/use-start-test"
 
 export default function TestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
@@ -40,6 +41,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
 
   const { data: testDetail, isLoading, error } = useTestDetail(testId, selectedBlock, selectedSubjects[0] || 0)
   const { data: profile, isLoading: profileLoading } = useProfile()
+  const startTestMutation = useStartTest()
 
   const isAuthenticated = authUtils.isAuthenticated()
 
@@ -49,7 +51,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
     }
   }, [isAuthenticated, router])
 
-  const handleStartTest = () => {
+  const handleStartTest = async () => {
     if (!isAuthenticated) {
       router.push("/login")
       return
@@ -64,9 +66,18 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
       return
     }
 
-    // Navigate to test with selected subjects
-    const subjectIds = selectedSubjects.join(",")
-    router.push(`/test/${testId}/take?block_id=${selectedBlock}&subject_ids=${subjectIds}`)
+    try {
+      const result = await startTestMutation.mutateAsync({
+        type_id: testId,
+        block_id: selectedBlock,
+        subject_id: selectedSubjects,
+      })
+
+      // Navigate to test taking page with questions
+      router.push(`/test/${testId}/take?block_id=${selectedBlock}&subject_ids=${selectedSubjects.join(",")}`)
+    } catch (error) {
+      console.error("Failed to start test:", error)
+    }
   }
 
   const toggleSubject = (subjectId: number) => {
@@ -161,7 +172,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                 {testDetail.blocks.map((block) => (
                   <Card 
                     key={block.id}
-                    
+                  
                   >
                     <CardContent className="p-6">
                       <div className="flex items-start justify-between mb-3">
@@ -238,7 +249,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                         {subject.name}
                       </span>
                       {isSelected && (
-                        <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0 ml-2" />
+                        <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 ml-2" />
                       )}
                     </button>
                   )
@@ -308,16 +319,23 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
 
               <Button
                 className="h-12 md:h-14 w-full rounded-full bg-gray-800 dark:bg-white text-base font-medium hover:bg-gray-700 dark:hover:bg-gray-200 text-white dark:text-gray-900"
-                disabled={!canStartTest}
+                disabled={!canStartTest || startTestMutation.isPending}
                 onClick={handleStartTest}
               >
-                {!isAuthenticated
-                  ? "Kirish kerak"
-                  : !profile?.name || !profile?.surname
-                    ? "Profilni to'ldiring"
-                    : selectedSubjects.length === 0
-                      ? "Fanni tanlang"
-                      : "Testni boshlash"}
+                {startTestMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Yuklanmoqda...
+                  </>
+                ) : !isAuthenticated ? (
+                  "Kirish kerak"
+                ) : !profile?.name || !profile?.surname ? (
+                  "Profilni to'ldiring"
+                ) : selectedSubjects.length === 0 ? (
+                  "Fanni tanlang"
+                ) : (
+                  "Testni boshlash"
+                )}
               </Button>
 
               {!isAuthenticated && (

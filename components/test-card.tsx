@@ -1,9 +1,13 @@
+"use client"
+
 import { Badge } from "@/components/ui/badge"
 import { ClockIcon, HelpCircleIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import type { Test } from "@/lib/test-api"
 import Image from "next/image"
+import { useTheme } from "@/components/theme-provider"
+import { useMemo } from "react"
 
 interface TestCardProps extends Test {}
 
@@ -36,12 +40,19 @@ export function TestCard({
   questions_count,
   difficulty,
 }: TestCardProps) {
+  const { theme } = useTheme()
+  const bgColor = useMemo(() => {
+    const defaultBg = backgroundColor || "#ffffff"
+    const defaultDarkBg = darkBackgroundColor || backgroundColor || "#1a1a1a"
+    return theme === "dark" ? defaultDarkBg : defaultBg
+  }, [theme, backgroundColor, darkBackgroundColor])
+  
   return (
     <Link href={`/test/${test_id}?block_id=${block_id}&subject_id=${subject_id}`}>
       <div
         className="relative overflow-hidden rounded-3xl p-6 transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer"
         style={{
-          backgroundColor: backgroundColor,
+          backgroundColor: bgColor,
         }}
       >
         {/* Background Icon - Large decorative */}

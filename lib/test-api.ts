@@ -56,6 +56,46 @@ export type TestDetailResponse = {
   suggestion: TestGroup[]
 }
 
+export type Answer = {
+  id: number
+  answer_text: string
+  answer_image: string | null
+}
+
+export type Question = {
+  id: number
+  question_text: string
+  question_image: string | null
+  difficulty: TestDifficulty
+  difficulty_display: string
+  subject: number
+  answers: Answer[]
+}
+
+export type SubjectQuestions = {
+  subject_id: number
+  subject_name: string
+  questions: Question[]
+}
+
+export type BlockQuestions = {
+  block_id: number
+  block_name: string
+  subjects: SubjectQuestions[]
+}
+
+export type TestQuestionsResponse = {
+  test: string
+  total_time: number
+  blocks: BlockQuestions[]
+}
+
+export type StartTestRequest = {
+  type_id: number
+  block_id: number
+  subject_id: number[]
+}
+
 export const testApi = {
   getHomeTests: () => apiService.get<TestHomeResponse>("test/test-home/"),
   
@@ -68,6 +108,14 @@ export const testApi = {
     
     return apiService.get<TestDetailResponse>(
       `test/test/choose/?${params.toString()}`,
+      true
+    )
+  },
+
+  startTest: (data: StartTestRequest) => {
+    return apiService.post<TestQuestionsResponse>(
+      "test/test/quesions/",
+      data,
       true
     )
   },

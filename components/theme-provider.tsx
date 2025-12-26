@@ -33,25 +33,79 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<string>("light")
+  const [rawTheme, setRawTheme] = useState<string>("light")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     const savedTheme = localStorage.getItem("app-theme") || "light"
-    setThemeState(savedTheme)
+    setRawTheme(savedTheme)
+
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+    const resolvedTheme = savedTheme === "system" ? (prefersDark ? "dark" : "light") : savedTheme
+
+    // Apply theme to document
+    if (resolvedTheme === "dark") {
+      document.documentElement.classList.add("dark")
+    } else {
+      document.documentElement.classList.remove("dark")
+    }
+
+    // Listen for storage changes (theme changes in other tabs)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "app-theme") {
+        const newTheme = e.newValue || "light"
+        setRawTheme(newTheme)
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+        const resolvedTheme = newTheme === "system" ? (prefersDark ? "dark" : "light") : newTheme
+        if (resolvedTheme === "dark") {
+          document.documentElement.classList.add("dark")
+        } else {
+          document.documentElement.classList.remove("dark")
+        }
+      }
+    }
+
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+    const handleSystemThemeChange = () => {
+      const currentTheme = localStorage.getItem("app-theme") || "light"
+      if (currentTheme === "system") {
+        const prefersDark = mediaQuery.matches
+        if (prefersDark) {
+          document.documentElement.classList.add("dark")
+        } else {
+          document.documentElement.classList.remove("dark")
+        }
+      }
+    }
+
+    mediaQuery.addEventListener("change", handleSystemThemeChange)
+    window.addEventListener("storage", handleStorageChange)
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange)
+      mediaQuery.removeEventListener("change", handleSystemThemeChange)
+    }
   }, [])
 
   const setTheme = (newTheme: string) => {
-    setThemeState(newTheme)
+    setRawTheme(newTheme)
     localStorage.setItem("app-theme", newTheme)
 
-    if (newTheme === "dark") {
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+    const resolvedTheme = newTheme === "system" ? (prefersDark ? "dark" : "light") : newTheme
+
+    if (resolvedTheme === "dark") {
       document.documentElement.classList.add("dark")
     } else {
       document.documentElement.classList.remove("dark")
     }
   }
 
-  return { theme: mounted ? theme : "light", setTheme }
+  // Resolve theme for components
+  const prefersDark = typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)").matches : false
+  const resolvedTheme = rawTheme === "system" ? (prefersDark ? "dark" : "light") : rawTheme
+
+  return { theme: mounted ? resolvedTheme : "light", setTheme, rawTheme: mounted ? rawTheme : "light" }
 }

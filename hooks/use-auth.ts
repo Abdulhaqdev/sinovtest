@@ -2,27 +2,15 @@
 
 import { useMutation } from "@tanstack/react-query"
 import { useRouter } from "next/navigation"
-import { sendOtp, verifyOtp, type VerifyOtpResponse } from "@/lib/auth-api"
+import { sendOtp, verifyOtp, authUtils, type VerifyOtpResponse } from "@/lib/auth-api"
 import { useToast } from "@/hooks/use-toast"
-
-const TOKENS_STORAGE_KEY = "auth_tokens"
-
-type PersistedTokens = VerifyOtpResponse
-
-const persistTokens = (tokens: PersistedTokens) => {
-  try {
-    localStorage.setItem(TOKENS_STORAGE_KEY, JSON.stringify(tokens))
-  } catch (error) {
-    console.error("Failed to persist tokens", error)
-  }
-}
 
 export const useSendOtpMutation = () => {
   const { toast } = useToast()
 
   return useMutation({
     mutationFn: (phoneNumber: string) => sendOtp(phoneNumber),
-    onSuccess: (data: { detail: string }) => {
+    onSuccess: (data) => {
       toast({
         title: "SMS yuborildi",
         description: data.detail,
@@ -46,7 +34,7 @@ export const useVerifyOtpMutation = () => {
     mutationFn: ({ phoneNumber, otpCode }: { phoneNumber: string; otpCode: string }) =>
       verifyOtp(phoneNumber, otpCode),
     onSuccess: (data: VerifyOtpResponse) => {
-      persistTokens(data)
+      authUtils.setTokens(data)
       toast({
         title: "Muvaffaqiyatli",
         description: "Siz tizimga kirdingiz",
@@ -67,4 +55,3 @@ export const useVerifyOtpMutation = () => {
     },
   })
 }
-
