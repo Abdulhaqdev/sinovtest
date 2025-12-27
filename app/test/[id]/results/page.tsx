@@ -1,16 +1,12 @@
-import { TestResultsContent } from "@/components/test-result"
 import { Suspense } from "react"
+import { TestResultsContent } from "@/components/test-result"
 
-
-export default function TestResultsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function TestResultsPage() {
   return (
-    <Suspense fallback={null}>
-      <TestResultsPageContent params={params} />
+    <Suspense fallback={<div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+    </div>}>
+      <TestResultsContent testId="" />
     </Suspense>
   )
-}
-
-async function TestResultsPageContent({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  return <TestResultsContent testId={id} />
 }

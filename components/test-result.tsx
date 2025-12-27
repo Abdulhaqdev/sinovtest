@@ -8,6 +8,7 @@ import { Clock, RotateCcw, Home, ChevronDown, ChevronUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { AnimatedParticles } from "@/components/animated-particles"
+
 type QuestionResult = {
   question_id: number
   is_correct: boolean
@@ -83,6 +84,7 @@ export function TestResultsContent({ testId }: { testId: string }) {
   }
 
   const percentage = ((results.total_correct / results.total_questions) * 100).toFixed(1)
+  const actualTestId = testId || results.test_id.toString()
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950">
@@ -213,7 +215,7 @@ export function TestResultsContent({ testId }: { testId: string }) {
                   className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
                   onClick={() => toggleBlock(block.block_id)}
                 >
-                  <div className="flex-1">
+                  <div className="flex-1 text-left">
                     <h3 className="font-semibold text-gray-900 dark:text-white">{block.block_name}</h3>
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
                       <span>{block.questions_count} ta savol</span>
@@ -253,8 +255,8 @@ export function TestResultsContent({ testId }: { testId: string }) {
                                   className={cn(
                                     "text-xs",
                                     correctCount >= subject.questions.length * 0.7
-                                      ? "bg-green-100 text-green-700 border-green-300"
-                                      : "bg-red-100 text-red-700 border-red-300",
+                                      ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300 dark:border-green-700"
+                                      : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-red-300 dark:border-red-700"
                                   )}
                                 >
                                   {correctCount}/{subject.questions.length}
@@ -275,8 +277,8 @@ export function TestResultsContent({ testId }: { testId: string }) {
                                     className={cn(
                                       "flex h-10 w-10 items-center justify-center rounded border-2 text-sm font-semibold",
                                       question.is_correct
-                                        ? "border-green-500 bg-green-50 text-green-700"
-                                        : "border-red-500 bg-red-50 text-red-700",
+                                        ? "border-green-500 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300"
+                                        : "border-red-500 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
                                     )}
                                   >
                                     {index + 1}
@@ -297,7 +299,7 @@ export function TestResultsContent({ testId }: { testId: string }) {
 
         {/* Action Buttons */}
         <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button size="lg" className="gap-2 w-full sm:w-auto" onClick={() => router.push(`/test/${testId}`)}>
+          <Button size="lg" className="gap-2 w-full sm:w-auto" onClick={() => router.push(`/test/${actualTestId}`)}>
             <RotateCcw className="h-4 w-4" />
             Qayta topshirish
           </Button>
