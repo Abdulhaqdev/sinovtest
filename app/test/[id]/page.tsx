@@ -55,6 +55,13 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
     }
   }, [isAuthenticated, router])
 
+  // Auto-select subject from URL if can_choose_count is 0
+  useEffect(() => {
+    if (testDetail && testDetail.can_choose_count === 0 && apiSubjectId && selectedSubjects.length === 0) {
+      setSelectedSubjects([apiSubjectId])
+    }
+  }, [testDetail, apiSubjectId, selectedSubjects.length])
+
   const handleStartTest = async () => {
     if (!isAuthenticated) {
       router.push("/login")
@@ -75,8 +82,9 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
       return
     }
 
-    // If can_choose_count is 0, no subjects are required
     const requiredCount = testDetail?.can_choose_count || 0
+    
+    // Validation based on can_choose_count
     if (requiredCount > 0) {
       if (selectedSubjects.length === 0) {
         toast({
@@ -95,16 +103,24 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
         })
         return
       }
+    } else if (selectedSubjects.length === 0) {
+      // If can_choose_count is 0 and no subject selected from URL
+      toast({
+        title: "Xatolik",
+        description: "Fan tanlanmagan",
+        variant: "destructive",
+      })
+      return
     }
 
     try {
       await startTestMutation.mutateAsync({
         type_id: testId,
         block_id: selectedBlock,
-        subject_id: requiredCount > 0 ? selectedSubjects : [],
+        subject_id: selectedSubjects,
       })
 
-      const subjectParam = requiredCount > 0 ? `&subject_ids=${selectedSubjects.join(",")}` : ""
+      const subjectParam = `&subject_ids=${selectedSubjects.join(",")}`
       router.push(`/test/${testId}/take?block_id=${selectedBlock}${subjectParam}`)
     } catch (error) {
       console.error("Failed to start test:", error)
@@ -166,6 +182,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
     profile?.name && 
     profile?.surname && 
     selectedBlock && 
+    selectedSubjects.length > 0 &&
     (!requiresSubjects || selectedSubjects.length === testDetail.can_choose_count)
 
   return (
@@ -280,13 +297,13 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
 
-            {/* Multi-Select Subjects - Only show if can_choose_count > 0 */}
-            {requiresSubjects && (
-              <div className="mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    Fanlarni tanlang
-                  </h3>
+            {/* Subject Selection - Show always but with different behavior */}
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {requiresSubjects ? "Fanlarni tanlang" : "Tanlangan fan"}
+                </h3>
+                {requiresSubjects && (
                   <Badge 
                     variant="outline" 
                     className={cn(
@@ -300,83 +317,98 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                   >
                     {selectedSubjects.length}/{testDetail.can_choose_count} ta tanlandi
                   </Badge>
-                </div>
+                )}
+              </div>
 
-                {/* Info Alert */}
-                <Alert className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
-                  <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <AlertDescription className="text-blue-800 dark:text-blue-300">
-                    Aynan <strong>{testDetail.can_choose_count}</strong> ta fan tanlashingiz kerak.
-                    {selectedSubjects.length > 0 && selectedSubjects.length < testDetail.can_choose_count && (
-                      <span className="block mt-1">
-                        Yana <strong>{testDetail.can_choose_count - selectedSubjects.length}</strong> ta fan tanlang.
-                      </span>
-                    )}
-                  </AlertDescription>
-                </Alert>
+              {requiresSubjects && (
+                <>
+                  {/* Info Alert */}
+                  <Alert className="mb-4 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
+                    <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertDescription className="text-blue-800 dark:text-blue-300">
+                      Aynan <strong>{testDetail.can_choose_count}</strong> ta fan tanlashingiz kerak.
+                      {selectedSubjects.length > 0 && selectedSubjects.length < testDetail.can_choose_count && (
+                        <span className="block mt-1">
+                          Yana <strong>{testDetail.can_choose_count - selectedSubjects.length}</strong> ta fan tanlang.
+                        </span>
+                      )}
+                    </AlertDescription>
+                  </Alert>
 
-                {/* Selected Subjects Pills */}
-                {selectedSubjects.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {selectedSubjects.map((subjectId) => {
-                      const subject = testDetail.subject.find(s => s.id === subjectId)
-                      if (!subject) return null
+                  {/* Selected Subjects Pills */}
+                  {selectedSubjects.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {selectedSubjects.map((subjectId) => {
+                        const subject = testDetail.subject.find(s => s.id === subjectId)
+                        if (!subject) return null
+                        
+                        return (
+                          <Badge
+                            key={subjectId}
+                            variant="secondary"
+                            className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 pl-3 pr-2 py-1.5 text-sm font-medium gap-1.5"
+                          >
+                            {subject.name}
+                            <button
+                              onClick={() => toggleSubject(subjectId)}
+                              className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                    {testDetail.subject.map((subject) => {
+                      const isSelected = selectedSubjects.includes(subject.id)
+                      const canSelect = isSelected || selectedSubjects.length < testDetail.can_choose_count
                       
                       return (
-                        <Badge
-                          key={subjectId}
-                          variant="secondary"
-                          className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 pl-3 pr-2 py-1.5 text-sm font-medium gap-1.5"
+                        <button
+                          key={subject.id}
+                          onClick={() => toggleSubject(subject.id)}
+                          disabled={!canSelect}
+                          className={cn(
+                            "relative flex items-center justify-between h-auto py-3 px-4 text-left rounded-lg border-2 transition-all",
+                            isSelected 
+                              ? "border-blue-500 bg-blue-50 dark:bg-blue-950 dark:border-blue-400 cursor-pointer" 
+                              : canSelect
+                                ? "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer"
+                                : "border-gray-200 dark:border-gray-700 opacity-40 cursor-not-allowed"
+                          )}
                         >
-                          {subject.name}
-                          <button
-                            onClick={() => toggleSubject(subjectId)}
-                            className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
+                          <span className={cn(
+                            "text-sm font-medium",
+                            isSelected 
+                              ? "text-blue-900 dark:text-blue-100" 
+                              : "text-gray-900 dark:text-white"
+                          )}>
+                            {subject.name}
+                          </span>
+                          {isSelected && (
+                            <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 ml-2" />
+                          )}
+                        </button>
                       )
                     })}
                   </div>
-                )}
+                </>
+              )}
 
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                  {testDetail.subject.map((subject) => {
-                    const isSelected = selectedSubjects.includes(subject.id)
-                    const canSelect = isSelected || selectedSubjects.length < testDetail.can_choose_count
-                    
-                    return (
-                      <button
-                        key={subject.id}
-                        onClick={() => toggleSubject(subject.id)}
-                        disabled={!canSelect}
-                        className={cn(
-                          "relative flex items-center justify-between h-auto py-3 px-4 text-left rounded-lg border-2 transition-all",
-                          isSelected 
-                            ? "border-blue-500 bg-blue-50 dark:bg-blue-950 dark:border-blue-400 cursor-pointer" 
-                            : canSelect
-                              ? "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer"
-                              : "border-gray-200 dark:border-gray-700 opacity-40 cursor-not-allowed"
-                        )}
-                      >
-                        <span className={cn(
-                          "text-sm font-medium",
-                          isSelected 
-                            ? "text-blue-900 dark:text-blue-100" 
-                            : "text-gray-900 dark:text-white"
-                        )}>
-                          {subject.name}
-                        </span>
-                        {isSelected && (
-                          <Check className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 ml-2" />
-                        )}
-                      </button>
-                    )
-                  })}
+              {!requiresSubjects && selectedSubjects.length > 0 && (
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2">
+                    <Check className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <span className="font-medium text-blue-900 dark:text-blue-100">
+                      {testDetail.subject.find(s => s.id === selectedSubjects[0])?.name}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Suggestions */}
             {testDetail.suggestion && testDetail.suggestion.length > 0 && (
@@ -422,21 +454,21 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                       {testDetail.blocks.find(b => b.id === selectedBlock)?.name || "Tanlanmagan"}
                     </div>
                   </div>
-                  {requiresSubjects && (
-                    <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
-                      <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                        Fanlar ({selectedSubjects.length}/{testDetail.can_choose_count} ta)
-                      </div>
-                      <div className="font-medium text-gray-900 dark:text-white text-sm">
-                        {selectedSubjects.length > 0
-                          ? selectedSubjects
-                              .map(id => testDetail.subject.find(s => s.id === id)?.name)
-                              .filter(Boolean)
-                              .join(", ")
-                          : "Tanlanmagan"}
-                      </div>
+                  <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+                    <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      {requiresSubjects 
+                        ? `Fanlar (${selectedSubjects.length}/${testDetail.can_choose_count} ta)` 
+                        : "Fan"}
                     </div>
-                  )}
+                    <div className="font-medium text-gray-900 dark:text-white text-sm">
+                      {selectedSubjects.length > 0
+                        ? selectedSubjects
+                            .map(id => testDetail.subject.find(s => s.id === id)?.name)
+                            .filter(Boolean)
+                            .join(", ")
+                        : "Tanlanmagan"}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -454,8 +486,8 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                   "Kirish kerak"
                 ) : !profile?.name || !profile?.surname ? (
                   "Profilni to'ldiring"
-                ) : requiresSubjects && selectedSubjects.length === 0 ? (
-                  `${testDetail.can_choose_count} ta fan tanlang`
+                ) : selectedSubjects.length === 0 ? (
+                  requiresSubjects ? `${testDetail.can_choose_count} ta fan tanlang` : "Fan tanlang"
                 ) : requiresSubjects && selectedSubjects.length !== testDetail.can_choose_count ? (
                   `Yana ${testDetail.can_choose_count - selectedSubjects.length} ta fan tanlang`
                 ) : (

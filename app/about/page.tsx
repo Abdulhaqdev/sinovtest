@@ -11,29 +11,6 @@ export default function AboutPage() {
     { label: "Muvaffaqiyat darajasi", value: "94%", color: "peach" },
   ]
 
-  const team = [
-    {
-      name: "Aziza Karimova",
-      role: "Loyiha rahbari",
-      image: "/professional-woman-portrait.png",
-    },
-    {
-      name: "Rustam Tursunov",
-      role: "Texnik direktor",
-      image: "/professional-man-portrait.png",
-    },
-    {
-      name: "Dilnoza Hasanova",
-      role: "Ta'lim bo'yicha mutaxassis",
-      image: "/professional-woman-teacher.png",
-    },
-    {
-      name: "Jasur Rahimov",
-      role: "Dasturchi",
-      image: "/professional-developer.png",
-    },
-  ]
-
   const values = [
     {
       icon: Target,
@@ -113,29 +90,6 @@ export default function AboutPage() {
             ))}
           </div>
         </div>
-
-        {/* Team Section */}
-        <div className="mb-16">
-          <h2 className="mb-8 text-center text-3xl font-bold text-gray-900 dark:text-white">Bizning jamoa</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {team.map((member, index) => (
-              <div key={index} className="overflow-hidden rounded-3xl bg-white dark:bg-gray-900 shadow-sm border border-gray-200 dark:border-gray-800">
-                <div className="aspect-square w-full overflow-hidden">
-                  <img
-                    src={member.image || "/placeholder.svg"}
-                    alt={member.name}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div className="p-6 text-center">
-                  <h3 className="mb-1 text-lg font-bold text-gray-900 dark:text-white">{member.name}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{member.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Contact Section */}
         <div className="rounded-3xl bg-emerald-50 dark:bg-emerald-950 p-8 md:p-12">
           <div className="mx-auto max-w-[600px] text-center">
