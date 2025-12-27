@@ -1,10 +1,9 @@
 "use client"
 
 import { useSearchParams, useRouter } from "next/navigation"
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, RotateCcw, Home, ChevronDown, ChevronUp } from "lucide-react"
+import { Clock, RotateCcw, Home } from "lucide-react"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { AnimatedParticles } from "@/components/animated-particles"
@@ -48,9 +47,6 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
   const searchParams = useSearchParams()
   const router = useRouter()
 
-  const [expandedBlocks, setExpandedBlocks] = useState<Record<number, boolean>>({})
-  const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({})
-
   const resultsData = searchParams.get("data")
   let results: TestResult | null = null
 
@@ -75,14 +71,6 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
     )
-  }
-
-  const toggleBlock = (blockId: number) => {
-    setExpandedBlocks((prev) => ({ ...prev, [blockId]: !prev[blockId] }))
-  }
-
-  const toggleSubject = (key: string) => {
-    setExpandedSubjects((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   const percentage = ((results.total_correct / results.total_questions) * 100).toFixed(1)
@@ -203,100 +191,77 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
         <p className="text-gray-600 dark:text-gray-400 mb-8">{results.total_questions} ta savol</p>
 
         {/* Blocks */}
-        <div className="space-y-4">
-          {results.blocks.map((block) => {
-            const blockPercentage = ((block.correct_answers / block.questions_count) * 100).toFixed(1)
-            const isExpanded = expandedBlocks[block.block_id]
-
-            return (
-              <div
-                key={block.block_id}
-                className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden"
-              >
-                <button
-                  className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors"
-                  onClick={() => toggleBlock(block.block_id)}
-                >
-                  <div className="flex-1 text-left">
-                    <h3 className="font-semibold text-gray-900 dark:text-white">{block.block_name}</h3>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-gray-600 dark:text-gray-400">
+        <div className="space-y-6">
+          {results.blocks.map((block) => (
+            <div
+              key={block.block_id}
+              className="border border-gray-200 dark:border-gray-800 rounded-lg overflow-hidden"
+            >
+              {/* Block Header */}
+              <div className="bg-gray-50 dark:bg-gray-900/50 p-4 border-b border-gray-200 dark:border-gray-800">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{block.block_name}</h3>
+                    <div className="flex items-center gap-4 mt-1 text-sm text-gray-600 dark:text-gray-400">
                       <span>{block.questions_count} ta savol</span>
                       <span>{block.ball_block} ball/savol</span>
                     </div>
                   </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">{block.score.toFixed(1)}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                      {block.correct_answers}/{block.questions_count}
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">{block.score.toFixed(1)}</div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400">
-                        {block.correct_answers}/{block.questions_count}
+              {/* Subjects */}
+              <div className="p-4 space-y-4">
+                {block.subjects.map((subject) => {
+                  const correctCount = subject.questions.filter((q) => q.is_correct).length
+
+                  return (
+                    <div key={subject.subject_id} className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <h4 className="font-medium text-gray-900 dark:text-white">{subject.subject_name}</h4>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-xs",
+                              correctCount >= subject.questions.length * 0.7
+                                ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300 dark:border-green-700"
+                                : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-red-300 dark:border-red-700"
+                            )}
+                          >
+                            {correctCount}/{subject.questions.length}
+                          </Badge>
+                        </div>
+                      </div>
+
+                      {/* Questions Grid */}
+                      <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-2">
+                        {subject.questions.map((question, index) => (
+                          <div
+                            key={question.question_id}
+                            className={cn(
+                              "flex h-10 w-10 items-center justify-center rounded-lg border-2 text-sm font-semibold transition-all hover:scale-110",
+                              question.is_correct
+                                ? "border-green-500 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300"
+                                : "border-red-500 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
+                            )}
+                          >
+                            {index + 1}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                  </div>
-                </button>
-
-                {isExpanded && (
-                  <div className="border-t border-gray-200 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-900/50">
-                    <div className="space-y-3">
-                      {block.subjects.map((subject) => {
-                        const subjectKey = `${block.block_id}-${subject.subject_id}`
-                        const isSubjectExpanded = expandedSubjects[subjectKey]
-                        const correctCount = subject.questions.filter((q) => q.is_correct).length
-
-                        return (
-                          <div key={subjectKey}>
-                            <button
-                              onClick={() => toggleSubject(subjectKey)}
-                              className="w-full flex items-center justify-between p-3 rounded hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <h4 className="font-medium text-gray-900 dark:text-white">{subject.subject_name}</h4>
-                                <Badge
-                                  variant="outline"
-                                  className={cn(
-                                    "text-xs",
-                                    correctCount >= subject.questions.length * 0.7
-                                      ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-green-300 dark:border-green-700"
-                                      : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-red-300 dark:border-red-700"
-                                  )}
-                                >
-                                  {correctCount}/{subject.questions.length}
-                                </Badge>
-                              </div>
-                              {isSubjectExpanded ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </button>
-
-                            {isSubjectExpanded && (
-                              <div className="mt-3 grid grid-cols-6 sm:grid-cols-8 gap-2 ml-3">
-                                {subject.questions.map((question, index) => (
-                                  <div
-                                    key={question.question_id}
-                                    className={cn(
-                                      "flex h-10 w-10 items-center justify-center rounded border-2 text-sm font-semibold",
-                                      question.is_correct
-                                        ? "border-green-500 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300"
-                                        : "border-red-500 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
-                                    )}
-                                  >
-                                    {index + 1}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
+                  )
+                })}
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
 
         {/* Action Buttons */}

@@ -6,12 +6,20 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Star, Trophy, Clock, CheckCircle2, Loader2 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Trophy, Clock, CheckCircle2, Loader2, Award } from "lucide-react"
 import { useState, useEffect } from "react"
+
+
+import { format } from "date-fns"
+import { uz } from "date-fns/locale"
+import { useMyResults, useMyStats } from "@/hooks/use-my-results"
 import { useProfile, useUpdateProfile } from "@/hooks/user-update"
 
 export default function ProfilePage() {
-  const { data: profile, isLoading } = useProfile()
+  const { data: profile, isLoading: profileLoading } = useProfile()
+  const { data: results, isLoading: resultsLoading } = useMyResults()
+  const { data: stats, isLoading: statsLoading } = useMyStats()
   const updateProfile = useUpdateProfile()
 
   const [formData, setFormData] = useState({
@@ -56,39 +64,27 @@ export default function ProfilePage() {
     }
   }
 
-  // Mock data for tests
-  const mockStats = {
-    testsCompleted: 160,
-    correctAnswers: 3282,
-    averageScore: 85,
-    rank: 1,
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), "d MMMM yyyy", { locale: uz })
+    } catch {
+      return dateString
+    }
   }
 
-  const mockRecentTests = [
-    {
-      id: 1,
-      title: "Boshlang'ich ta'lim",
-      date: "12 oktabr 2025",
-      score: 88,
-      time: "1:45:23",
-    },
-    {
-      id: 2,
-      title: "Ingliz tili",
-      date: "10 oktabr 2025",
-      score: 92,
-      time: "1:32:15",
-    },
-    {
-      id: 3,
-      title: "Maktabgacha ta'lim muassasalari tarbiyachisi",
-      date: "8 oktabr 2025",
-      score: 85,
-      time: "1:28:45",
-    },
-  ]
+  const getScoreColor = (score: number) => {
+    if (score >= 70) return "text-green-600 dark:text-green-400"
+    if (score >= 50) return "text-yellow-600 dark:text-yellow-400"
+    return "text-red-600 dark:text-red-400"
+  }
 
-  if (isLoading) {
+  const getScoreBgColor = (score: number) => {
+    if (score >= 70) return "bg-green-100 dark:bg-green-900/30 border-green-200 dark:border-green-800"
+    if (score >= 50) return "bg-yellow-100 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800"
+    return "bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800"
+  }
+
+  if (profileLoading || statsLoading) {
     return (
       <div className="min-h-screen bg-white dark:bg-gray-950">
         <Header />
@@ -128,10 +124,10 @@ export default function ProfilePage() {
                     Telegram ID: {profile?.telegram_id}
                   </p>
                 </div>
-                <div className="flex items-center gap-2 rounded-full bg-yellow-100 dark:bg-yellow-900 px-4 py-2">
-                  <Trophy className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                  <span className="font-semibold text-yellow-700 dark:text-yellow-300">
-                    #{mockStats.rank} o'rinda
+                <div className="flex items-center gap-2 rounded-full bg-blue-100 dark:bg-blue-900 px-4 py-2 border border-blue-200 dark:border-blue-800">
+                  <Award className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <span className="font-semibold text-blue-700 dark:text-blue-300">
+                   {stats?.rank ? `Reyting: ${stats.rank}` : "Reyting mavjud emas"}
                   </span>
                 </div>
               </div>
@@ -140,19 +136,19 @@ export default function ProfilePage() {
               <div className="grid grid-cols-3 gap-6">
                 <div className="rounded-xl bg-white dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700">
                   <div className="mb-1 text-2xl font-bold text-gray-900 dark:text-white">
-                    {mockStats.testsCompleted}
+                    {stats?.total_tests || 0}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">Jami sinovlar</div>
                 </div>
                 <div className="rounded-xl bg-white dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700">
                   <div className="mb-1 text-2xl font-bold text-gray-900 dark:text-white">
-                    {mockStats.correctAnswers}
+                    {stats?.total_correct || 0}
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">To'g'ri javoblar</div>
                 </div>
                 <div className="rounded-xl bg-white dark:bg-gray-800 p-4 border border-gray-200 dark:border-gray-700">
                   <div className="mb-1 text-2xl font-bold text-gray-900 dark:text-white">
-                    {mockStats.averageScore}%
+                    {stats?.average_score?.toFixed(1) || 0}%
                   </div>
                   <div className="text-sm text-gray-600 dark:text-gray-400">O'rtacha ball</div>
                 </div>
@@ -179,43 +175,70 @@ export default function ProfilePage() {
           </TabsList>
 
           <TabsContent value="tests" className="space-y-4">
-            {mockRecentTests.map((test) => (
-              <div
-                key={test.id}
-                className="rounded-2xl bg-gray-50 dark:bg-gray-900 p-6 shadow-sm border border-gray-200 dark:border-gray-800"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">{test.title}</h3>
-                    <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <Clock className="h-4 w-4" />
-                        <span>{test.time}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4" />
-                        <span>{test.date}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="mb-1 text-2xl font-bold text-gray-900 dark:text-white">{test.score}%</div>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-4 w-4 ${
-                            i < Math.floor(test.score / 20)
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-gray-300 dark:text-gray-600"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
+            {resultsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
               </div>
-            ))}
+            ) : results && results.length > 0 ? (
+              results.map((test) => {
+                const scoreNum = parseFloat(test.score)
+                return (
+                  <div
+                    key={test.id}
+                    className="rounded-2xl bg-gray-50 dark:bg-gray-900 p-6 shadow-sm border border-gray-200 dark:border-gray-800 hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-3">
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-lg">
+                            {test.test_name}
+                          </h3>
+                          <Badge
+                            variant="outline"
+                            className={getScoreBgColor(scoreNum)}
+                          >
+                            {test.correct} ta to'g'ri
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>{formatDate(test.created_at)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Trophy className="h-4 w-4" />
+                            <span>{test.blocks.join(", ")}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {test.subjects.map((subject, index) => (
+                            <span
+                              key={index}
+                              className="text-xs px-2 py-1 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                            >
+                              {subject}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="text-right ml-6">
+                        <div className={`text-3xl font-bold ${getScoreColor(scoreNum)}`}>
+                          {scoreNum.toFixed(1)}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">ball</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="text-center py-12">
+                <Trophy className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-gray-600 dark:text-gray-400">
+                  Hali birorta test topshirmadingiz
+                </p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent

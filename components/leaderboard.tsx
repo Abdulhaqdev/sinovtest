@@ -1,19 +1,12 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Award, Flame } from "lucide-react"
-
-interface LeaderboardUser {
-  rank: number
-  name: string
-  attempts: number
-  correctAnswers: number
-  status?: "active" | "idle"
-  score?: number
-  hasPhoto?: boolean
-}
+import { Award, Crown } from "lucide-react"
+import type { LeaderboardUser } from "@/lib/leaderboard-api"
 
 interface LeaderboardProps {
   users: LeaderboardUser[]
+  totalUsers: number
+  myRank?: LeaderboardUser
 }
 
 const rankColors = {
@@ -29,43 +22,97 @@ const getMedalEmoji = (rank: number) => {
   return null
 }
 
-export function Leaderboard({ users }: LeaderboardProps) {
+export function Leaderboard({ users, totalUsers, myRank }: LeaderboardProps) {
+  const totalTests = users.reduce((acc, u) => acc + u.tests_count, 0)
+  const totalCorrect = users.reduce((acc, u) => acc + u.correct_answers, 0)
+  const avgScore = users.length > 0 
+    ? users.reduce((acc, u) => acc + parseFloat(u.total_score), 0) / users.length 
+    : 0
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">Peshqadamlar jadvali</h1>
-        <p className="text-gray-600 dark:text-gray-400">{users.length} eng yaxshi o'quvchilar</p>
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+          Peshqadamlar jadvali
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          Top {users.length} eng yaxshi o'quvchilar
+        </p>
       </div>
 
+      {/* My Rank Card (if not in top 10) */}
+      {myRank && !users.find((u) => u.user_id === myRank.user_id) && (
+        <div className="rounded-2xl bg-linear-to-r from-blue-500 to-blue-600 p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm font-bold text-xl">
+                {myRank.rank}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-lg">{myRank.full_name}</h3>
+                  <Badge className="bg-white/20 text-white border-white/30">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Sizning o'rningiz
+                  </Badge>
+                </div>
+                <p className="text-sm text-white/80 mt-1">
+                  {myRank.tests_count} ta sinov • {myRank.correct_answers} ta to'g'ri
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold">{parseFloat(myRank.total_score).toFixed(1)}</div>
+              <div className="text-sm text-white/80">ball</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Leaderboard Container */}
-      <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
+      <div className="rounded-2xl bg-white dark:bg-gray-800 shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
         {/* Table Header */}
-        <div className="hidden md:grid grid-cols-12 gap-4 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-600 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
-          <div className="col-span-1 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Rank</div>
-          <div className="col-span-5 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">Ism</div>
+        <div className="hidden md:grid grid-cols-12 gap-4 bg-linear-to-r from-blue-50 to-blue-100 dark:from-gray-700 dark:to-gray-600 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
+          <div className="col-span-1 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
+            Rank
+          </div>
+          <div className="col-span-5 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase">
+            Ism
+          </div>
           <div className="col-span-2 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase text-center">
             Sinovlar
           </div>
           <div className="col-span-2 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase text-center">
             To'g'ri
           </div>
-          <div className="col-span-2 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase text-right">Ball</div>
+          <div className="col-span-2 text-xs font-bold text-gray-700 dark:text-gray-300 uppercase text-right">
+            Ball
+          </div>
         </div>
 
         {/* Leaderboard Items */}
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
-          {users.map((user, index) => {
+          {users.map((user) => {
             const medalEmoji = getMedalEmoji(user.rank)
             const isTopThree = user.rank <= 3
+            const score = parseFloat(user.total_score)
+            const initials = user.full_name
+              .split(" ")
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()
+              .slice(0, 2)
 
             return (
               <div
-                key={user.rank}
+                key={user.user_id}
                 className={`grid md:grid-cols-12 gap-4 px-4 md:px-6 py-4 transition-colors ${
-                  isTopThree
-                    ? "bg-gradient-to-r from-blue-50 to-blue-50 dark:from-blue-950/20 dark:to-blue-900/20 border-l-4 border-blue-400"
-                    : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                  user.is_me
+                    ? "bg-linear-to-r from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 border-l-4 border-blue-500"
+                    : isTopThree
+                      ? "bg-linear-to-r from-yellow-50/50 to-orange-50/50 dark:from-yellow-950/10 dark:to-orange-950/10 border-l-4 border-yellow-400"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-700/50"
                 }`}
               >
                 {/* Rank */}
@@ -73,7 +120,7 @@ export function Leaderboard({ users }: LeaderboardProps) {
                   <div
                     className={`flex h-9 w-9 items-center justify-center rounded-full font-bold text-white ${
                       isTopThree
-                        ? `bg-gradient-to-br ${rankColors[user.rank as keyof typeof rankColors]}`
+                        ? `bg-linear-to-br ${rankColors[user.rank as keyof typeof rankColors]}`
                         : "bg-gray-300 dark:bg-gray-600"
                     }`}
                   >
@@ -83,60 +130,67 @@ export function Leaderboard({ users }: LeaderboardProps) {
 
                 {/* User Info */}
                 <div className="col-span-4 md:col-span-5 flex items-center gap-3 min-w-0">
-                  <Avatar className="h-10 w-10 flex-shrink-0 bg-gray-300 dark:bg-gray-600">
-                    {user.hasPhoto ? (
-                      <AvatarImage src="/placeholder.svg?height=48&width=48" alt={user.name} />
-                    ) : (
-                      <AvatarFallback className="bg-gradient-to-br from-blue-400 to-blue-600">
-                        <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                        </svg>
-                      </AvatarFallback>
-                    )}
+                  <Avatar className="h-10 w-10 shrink-0 bg-linear-to-br from-blue-400 to-blue-600">
+                    <AvatarFallback className="bg-linear-to-br from-blue-400 to-blue-600 text-white font-semibold">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-semibold text-sm md:text-base text-gray-900 dark:text-white truncate">
-                      {user.name}
-                    </h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${
-                          user.status === "active"
-                            ? "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
-                            : "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600"
-                        }`}
-                      >
-                        {user.status === "active" ? (
-                          <span className="flex items-center gap-1">
-                            <Flame className="h-3 w-3" />
-                            Faol
-                          </span>
-                        ) : (
-                          "Oyin yo'q"
-                        )}
-                      </Badge>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-sm md:text-base text-gray-900 dark:text-white truncate">
+                        {user.full_name}
+                      </h3>
+                      {user.is_me && (
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800"
+                        >
+                          Siz
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Attempts */}
+                {/* Tests Count */}
                 <div className="col-span-2 flex items-center md:justify-center">
-                  <span className="text-sm font-medium text-gray-900 dark:text-white">{user.attempts}</span>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
+                    {user.tests_count}
+                  </span>
                 </div>
 
                 {/* Correct Answers */}
                 <div className="col-span-2 flex items-center md:justify-center">
                   <div className="flex items-center gap-1">
-                    <Award className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{user.correctAnswers}</span>
+                    <Award className="h-4 w-4 text-green-500" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
+                      {user.correct_answers}
+                    </span>
                   </div>
                 </div>
 
                 {/* Score */}
                 <div className="col-span-3 md:col-span-2 flex items-center md:justify-end">
-                  <div className="px-3 py-1 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <span className="text-sm font-bold text-blue-700 dark:text-blue-400">{user.score}</span>
+                  <div
+                    className={`px-3 py-1 rounded-lg ${
+                      user.is_me
+                        ? "bg-blue-100 dark:bg-blue-900/30"
+                        : isTopThree
+                          ? "bg-yellow-100 dark:bg-yellow-900/30"
+                          : "bg-gray-100 dark:bg-gray-700"
+                    }`}
+                  >
+                    <span
+                      className={`text-sm font-bold ${
+                        user.is_me
+                          ? "text-blue-700 dark:text-blue-400"
+                          : isTopThree
+                            ? "text-yellow-700 dark:text-yellow-400"
+                            : "text-gray-700 dark:text-gray-300"
+                      }`}
+                    >
+                      {score.toFixed(1)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -147,21 +201,17 @@ export function Leaderboard({ users }: LeaderboardProps) {
 
       {/* Footer Stats */}
       <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center border border-gray-200 dark:border-gray-700">
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Jami foydalanuvchilar</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{users.length}</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalUsers}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center border border-gray-200 dark:border-gray-700">
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Jami sinovlar</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {users.reduce((acc, u) => acc + u.attempts, 0)}
-          </p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalTests}</p>
         </div>
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center border border-gray-200 dark:border-gray-700">
           <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">O'rtacha ball</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            {Math.round(users.reduce((acc, u) => acc + (u.score || 0), 0) / users.length)}
-          </p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{avgScore.toFixed(1)}</p>
         </div>
       </div>
     </div>

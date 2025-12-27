@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
-import { profileApi, UpdateProfileData } from "./use-user-profile"
+import { profileApi, type UpdateProfileData } from "@/hooks/use-user-profile"
 
 const PROFILE_QUERY_KEY = ["user", "profile"] as const
 
