@@ -16,7 +16,7 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react"
-import { use, useState } from "react"
+import { use, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
@@ -54,11 +54,9 @@ type TestResult = {
   blocks: BlockResult[]
 }
 
-export default function TestResultsPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params)
+function TestResultsContent({ testId }: { testId: string }) {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const testId = resolvedParams.id
 
   const [expandedBlocks, setExpandedBlocks] = useState<Record<number, boolean>>({})
   const [expandedSubjects, setExpandedSubjects] = useState<Record<string, boolean>>({})
@@ -77,18 +75,15 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
 
   if (!results) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-        <Header />
-        <div className="flex min-h-[calc(100vh-6rem)] items-center justify-center">
-          <div className="text-center">
-            <p className="text-lg text-red-600 dark:text-red-400">Natijalar topilmadi</p>
-            <Button
-              onClick={() => router.push("/")}
-              className="mt-4"
-            >
-              Bosh sahifaga qaytish
-            </Button>
-          </div>
+      <div className="flex min-h-[calc(100vh-6rem)] items-center justify-center">
+        <div className="text-center">
+          <p className="text-lg text-red-600 dark:text-red-400">Natijalar topilmadi</p>
+          <Button
+            onClick={() => router.push("/")}
+            className="mt-4"
+          >
+            Bosh sahifaga qaytish
+          </Button>
         </div>
       </div>
     )
@@ -107,10 +102,7 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
   const isMediumScore = Number(percentage) >= 50 && Number(percentage) < 70
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <Header />
-
-      <div className="mx-auto max-w-[1400px] px-4 md:px-6 py-6 md:py-8">
+    <div className="mx-auto max-w-[1400px] px-4 md:px-6 py-6 md:py-8">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -335,6 +327,26 @@ export default function TestResultsPage({ params }: { params: Promise<{ id: stri
           </Button>
         </div>
       </div>
+    </div>
+  )
+}
+
+export default function TestResultsPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params)
+  const testId = resolvedParams.id
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <Header />
+      <Suspense fallback={
+        <div className="flex min-h-[calc(100vh-6rem)] items-center justify-center">
+          <div className="text-center">
+            <p className="text-lg text-gray-600 dark:text-gray-400">Yuklanmoqda...</p>
+          </div>
+        </div>
+      }>
+        <TestResultsContent testId={testId} />
+      </Suspense>
     </div>
   )
 }
