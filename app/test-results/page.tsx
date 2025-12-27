@@ -326,7 +326,6 @@ function TestResultsContent({ testId }: { testId: string }) {
             </Link>
           </Button>
         </div>
-      </div>
     </div>
   )
 }
