@@ -1,7 +1,7 @@
 "use client"
 
 import { useSearchParams, useRouter } from "next/navigation"
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Clock, RotateCcw, Home, ChevronDown, ChevronUp } from "lucide-react"
@@ -42,7 +42,7 @@ type TestResult = {
   blocks: BlockResult[]
 }
 
-export function TestResultsContent({ testId }: { testId: string }) {
+function TestResultsInner({ testId }: { testId: string }) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -312,5 +312,19 @@ export function TestResultsContent({ testId }: { testId: string }) {
         </div>
       </div>
     </div>
+  )
+}
+
+export function TestResultsContent({ testId }: { testId: string }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-white dark:bg-gray-950 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 dark:border-white"></div>
+        </div>
+      }
+    >
+      <TestResultsInner testId={testId} />
+    </Suspense>
   )
 }
