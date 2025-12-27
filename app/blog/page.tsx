@@ -72,22 +72,22 @@ export default function BlogPage() {
   ]
 
   const colorClasses = {
-    mint: "bg-emerald-50 hover:bg-emerald-100",
-    yellow: "bg-amber-50 hover:bg-amber-100",
-    lime: "bg-lime-50 hover:bg-lime-100",
-    peach: "bg-orange-50 hover:bg-orange-100",
-    sage: "bg-teal-50 hover:bg-teal-100",
+    mint: "bg-emerald-50 dark:bg-emerald-950 hover:bg-emerald-100 dark:hover:bg-emerald-900",
+    yellow: "bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900",
+    lime: "bg-lime-50 dark:bg-lime-950 hover:bg-lime-100 dark:hover:bg-lime-900",
+    peach: "bg-orange-50 dark:bg-orange-950 hover:bg-orange-100 dark:hover:bg-orange-900",
+    sage: "bg-teal-50 dark:bg-teal-950 hover:bg-teal-100 dark:hover:bg-teal-900",
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Header />
 
       <div className="mx-auto max-w-[1200px] px-6 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-gray-900">Blog</h1>
-          <p className="text-lg text-gray-600">Ta'lim sohasidagi so'nggi yangiliklar va foydali maqolalar</p>
+          <h1 className="mb-2 text-3xl font-bold text-gray-900 dark:text-white">Blog</h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400">Ta'lim sohasidagi so'nggi yangiliklar va foydali maqolalar</p>
         </div>
 
         {/* Blog Posts Grid */}
@@ -108,9 +108,9 @@ export default function BlogPage() {
                 />
               </div>
               <div className="p-6">
-                <h2 className="mb-3 text-xl font-bold text-gray-900 group-hover:text-gray-700">{post.title}</h2>
-                <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-gray-600">{post.excerpt}</p>
-                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+                <h2 className="mb-3 text-xl font-bold text-gray-900 dark:text-white group-hover:text-gray-700 dark:group-hover:text-gray-300">{post.title}</h2>
+                <p className="mb-4 line-clamp-3 text-sm leading-relaxed text-gray-600 dark:text-gray-400">{post.excerpt}</p>
+                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                   <div className="flex items-center gap-1">
                     <User className="h-3.5 w-3.5" />
                     <span>{post.author}</span>
@@ -133,7 +133,7 @@ export default function BlogPage() {
         <div className="flex justify-center">
           <Button
             size="lg"
-            className="h-14 rounded-full bg-gray-800 px-16 text-base font-medium text-white hover:bg-gray-700"
+            className="h-14 rounded-full bg-gray-800 dark:bg-white px-16 text-base font-medium text-white dark:text-gray-900 hover:bg-gray-700 dark:hover:bg-gray-200"
           >
             Yana ko'rsatish
           </Button>

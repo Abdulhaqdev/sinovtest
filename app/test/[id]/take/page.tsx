@@ -10,16 +10,6 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { testApi, type Question, type CheckAnswersRequest } from "@/lib/test-api"
 import Image from "next/image"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
 import { useCheckAnswers } from "@/hooks/use-start-test"
 
 // Base URL for images
@@ -45,7 +35,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [showQuestionNav, setShowQuestionNav] = useState(false)
-  const [showFinishDialog, setShowFinishDialog] = useState(false)
 
   const checkAnswersMutation = useCheckAnswers()
 
@@ -88,20 +77,16 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     testData.blocks.forEach((block) => {
       const subjects = block.subjects.map((subject) => ({
         subject_id: subject.subject_id,
-        questions: subject.questions
-          .filter((q) => selectedAnswers[q.id])
-          .map((q) => ({
-            question_id: q.id,
-            answer_id: selectedAnswers[q.id],
-          })),
-      })).filter((s) => s.questions.length > 0)
+        questions: subject.questions.map((q) => ({
+          question_id: q.id,
+          answer_id: selectedAnswers[q.id] || 0, // Send 0 if not answered
+        })),
+      }))
 
-      if (subjects.length > 0) {
-        blocks.push({
-          block_id: block.block_id,
-          subjects,
-        })
-      }
+      blocks.push({
+        block_id: block.block_id,
+        subjects,
+      })
     })
 
     try {
@@ -171,19 +156,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     }
   }
 
-  const handleFinishClick = () => {
-    // Check if all questions are answered
-    const unansweredCount = allQuestions.length - Object.keys(selectedAnswers).length
-    
-    if (unansweredCount > 0) {
-      // Show warning dialog
-      setShowFinishDialog(true)
-    } else {
-      // All answered, submit directly
-      handleFinish()
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -214,6 +186,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
   const totalSeconds = testData.total_time * 60
   const isTimeWarning = timeRemaining <= totalSeconds * 0.1 && timeRemaining > 0
   const unansweredCount = allQuestions.length - Object.keys(selectedAnswers).length
+  const allAnswered = unansweredCount === 0
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -280,11 +253,11 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
 
             {/* Unanswered Warning */}
             {unansweredCount > 0 && (
-              <div className="mb-4 rounded-lg border-2 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 p-4">
-                <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+              <div className="mb-4 rounded-lg border-2 border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-4">
+                <div className="flex items-center gap-2 text-red-700 dark:text-red-300">
                   <AlertCircle className="h-5 w-5" />
                   <p className="text-sm font-medium">
-                    {unansweredCount} ta savolga javob berilmagan
+                    Barcha savollarga javob bering! Yana {unansweredCount} ta savol qoldi.
                   </p>
                 </div>
               </div>
@@ -367,9 +340,14 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                   </Button>
                   {currentQuestion === allQuestions.length - 1 ? (
                     <Button
-                      className="rounded-full bg-green-600 hover:bg-green-700 px-6 md:px-8 text-sm md:text-base"
-                      onClick={handleFinishClick}
-                      disabled={checkAnswersMutation.isPending}
+                      className={cn(
+                        "rounded-full px-6 md:px-8 text-sm md:text-base",
+                        allAnswered 
+                          ? "bg-green-600 hover:bg-green-700" 
+                          : "bg-gray-400 cursor-not-allowed"
+                      )}
+                      onClick={handleFinish}
+                      disabled={!allAnswered || checkAnswersMutation.isPending}
                     >
                       {checkAnswersMutation.isPending ? (
                         <>
@@ -401,15 +379,20 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                 <CardContent className="p-3 md:p-4">
                   <Button
                     variant="outline"
-                    className="w-full rounded-full text-xs md:text-sm"
-                    onClick={handleFinishClick}
-                    disabled={checkAnswersMutation.isPending}
+                    className={cn(
+                      "w-full rounded-full text-xs md:text-sm",
+                      !allAnswered && "opacity-50 cursor-not-allowed"
+                    )}
+                    onClick={handleFinish}
+                    disabled={!allAnswered || checkAnswersMutation.isPending}
                   >
                     {checkAnswersMutation.isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         Yuklanmoqda...
                       </>
+                    ) : !allAnswered ? (
+                      `Testni yakunlash (${unansweredCount} ta qoldi)`
                     ) : (
                       "Testni yakunlash"
                     )}
@@ -457,7 +440,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                                         ? "border-gray-800 dark:border-white bg-gray-800 dark:bg-white text-white dark:text-gray-900"
                                         : isAnswered
                                           ? "border-green-500 bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300"
-                                          : "border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                                          : "border-red-500 bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300"
                                     )}
                                   >
                                     {questionIndex + 1}
@@ -498,7 +481,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                       <span className={cn(
                         "font-medium",
                         unansweredCount > 0 
-                          ? "text-orange-600 dark:text-orange-400" 
+                          ? "text-red-600 dark:text-red-400" 
                           : "text-green-600 dark:text-green-400"
                       )}>
                         {unansweredCount}
@@ -511,26 +494,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
           </div>
         </div>
       </div>
-
-      {/* Finish Confirmation Dialog */}
-      <AlertDialog open={showFinishDialog} onOpenChange={setShowFinishDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Testni yakunlashni xohlaysizmi?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Siz {unansweredCount} ta savolga javob bermadingiz. 
-              Javob berilmagan savollar noto'g'ri deb hisoblanadi.
-              Testni yakunlashga ishonchingiz komilmi?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Bekor qilish</AlertDialogCancel>
-            <AlertDialogAction onClick={handleFinish}>
-              Ha, yakunlash
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }

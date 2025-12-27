@@ -50,6 +50,7 @@ export type TestDetailResponse = {
     test_id: number
     test_name: string
     test_description: string
+    solved_users_count: number
   }
   subject: Subject[]
   blocks: Block[]
