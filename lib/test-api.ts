@@ -97,6 +97,44 @@ export type StartTestRequest = {
   subject_id: number[]
 }
 
+export type CheckAnswersRequest = {
+  test_id: number
+  blocks: {
+    block_id: number
+    subjects: {
+      subject_id: number
+      questions: {
+        question_id: number
+        answer_id: number
+      }[]
+    }[]
+  }[]
+}
+
+export type CheckAnswersResponse = {
+  total_score: number
+  correct_answers: number
+  wrong_answers: number
+  unanswered: number
+  details: {
+    block_id: number
+    block_name: string
+    subjects: {
+      subject_id: number
+      subject_name: string
+      score: number
+      correct: number
+      wrong: number
+      questions: {
+        question_id: number
+        is_correct: boolean
+        user_answer_id: number
+        correct_answer_id: number
+      }[]
+    }[]
+  }[]
+}
+
 export const testApi = {
   getHomeTests: () => apiService.get<TestHomeResponse>("test/test-home/"),
   
@@ -116,6 +154,14 @@ export const testApi = {
   startTest: (data: StartTestRequest) => {
     return apiService.post<TestQuestionsResponse>(
       "test/test/quesions/",
+      data,
+      true
+    )
+  },
+
+  checkAnswers: (data: CheckAnswersRequest) => {
+    return apiService.post<CheckAnswersResponse>(
+      "test/test/check-answers/",
       data,
       true
     )

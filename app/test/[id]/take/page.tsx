@@ -4,12 +4,23 @@ import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { AlertCircle, Clock, ChevronDown, ChevronUp, Loader2 } from "lucide-react"
-import { use, useState, useEffect } from "react"
+import { use, useState, useEffect, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { testApi, type Question } from "@/lib/test-api"
+import { testApi, type Question, type CheckAnswersRequest } from "@/lib/test-api"
 import Image from "next/image"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useCheckAnswers } from "@/hooks/use-start-test"
 
 // Base URL for images
 const IMAGE_BASE_URL = "https://v1.backend.sinovtest.uz"
@@ -34,6 +45,9 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [showQuestionNav, setShowQuestionNav] = useState(false)
+  const [showFinishDialog, setShowFinishDialog] = useState(false)
+
+  const checkAnswersMutation = useCheckAnswers()
 
   const { data: testData, isLoading, error } = useQuery({
     queryKey: ["test", "questions", testId, blockId, subjectIds],
@@ -47,6 +61,61 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     },
     enabled: !!testId && !!blockId && subjectIds.length > 0,
   })
+
+  // Flatten all questions
+  const allQuestions: Array<{ question: Question; blockName: string; subjectName: string; blockId: number; subjectId: number }> = []
+  testData?.blocks.forEach((block) => {
+    block.subjects.forEach((subject) => {
+      subject.questions.forEach((question) => {
+        allQuestions.push({
+          question,
+          blockName: block.block_name,
+          subjectName: subject.subject_name,
+          blockId: block.block_id,
+          subjectId: subject.subject_id,
+        })
+      })
+    })
+  })
+
+  // Move handleFinish definition before useEffect
+  const handleFinish = useCallback(async () => {
+    if (!testData) return
+
+    // Prepare data for API
+    const blocks: CheckAnswersRequest["blocks"] = []
+    
+    testData.blocks.forEach((block) => {
+      const subjects = block.subjects.map((subject) => ({
+        subject_id: subject.subject_id,
+        questions: subject.questions
+          .filter((q) => selectedAnswers[q.id])
+          .map((q) => ({
+            question_id: q.id,
+            answer_id: selectedAnswers[q.id],
+          })),
+      })).filter((s) => s.questions.length > 0)
+
+      if (subjects.length > 0) {
+        blocks.push({
+          block_id: block.block_id,
+          subjects,
+        })
+      }
+    })
+
+    try {
+      const result = await checkAnswersMutation.mutateAsync({
+        test_id: testId,
+        blocks,
+      })
+
+      // Navigate to results page with data
+      router.push(`/test/${testId}/results?data=${encodeURIComponent(JSON.stringify(result))}`)
+    } catch (error) {
+      console.error("Failed to submit test:", error)
+    }
+  }, [testData, selectedAnswers, testId, checkAnswersMutation, router])
 
   // Use total_time from API response
   useEffect(() => {
@@ -70,7 +139,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [timeRemaining])
+  }, [timeRemaining, handleFinish])
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
@@ -78,20 +147,6 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     const secs = seconds % 60
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
-
-  // Flatten all questions
-  const allQuestions: Array<{ question: Question; blockName: string; subjectName: string }> = []
-  testData?.blocks.forEach((block) => {
-    block.subjects.forEach((subject) => {
-      subject.questions.forEach((question) => {
-        allQuestions.push({
-          question,
-          blockName: block.block_name,
-          subjectName: subject.subject_name,
-        })
-      })
-    })
-  })
 
   const currentQuestionData = allQuestions[currentQuestion]
 
@@ -116,9 +171,17 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
     }
   }
 
-  const handleFinish = () => {
-    // TODO: Submit test results
-    router.push(`/test/${testId}/results`)
+  const handleFinishClick = () => {
+    // Check if all questions are answered
+    const unansweredCount = allQuestions.length - Object.keys(selectedAnswers).length
+    
+    if (unansweredCount > 0) {
+      // Show warning dialog
+      setShowFinishDialog(true)
+    } else {
+      // All answered, submit directly
+      handleFinish()
+    }
   }
 
   if (isLoading) {
@@ -150,6 +213,7 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
 
   const totalSeconds = testData.total_time * 60
   const isTimeWarning = timeRemaining <= totalSeconds * 0.1 && timeRemaining > 0
+  const unansweredCount = allQuestions.length - Object.keys(selectedAnswers).length
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -209,6 +273,18 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                   <AlertCircle className="h-5 w-5" />
                   <p className="text-sm font-medium">
                     Diqqat! Vaqt tugash arafasida. Iltimos, javoblaringizni tekshiring.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Unanswered Warning */}
+            {unansweredCount > 0 && (
+              <div className="mb-4 rounded-lg border-2 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950 p-4">
+                <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-300">
+                  <AlertCircle className="h-5 w-5" />
+                  <p className="text-sm font-medium">
+                    {unansweredCount} ta savolga javob berilmagan
                   </p>
                 </div>
               </div>
@@ -292,9 +368,17 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                   {currentQuestion === allQuestions.length - 1 ? (
                     <Button
                       className="rounded-full bg-green-600 hover:bg-green-700 px-6 md:px-8 text-sm md:text-base"
-                      onClick={handleFinish}
+                      onClick={handleFinishClick}
+                      disabled={checkAnswersMutation.isPending}
                     >
-                      Yakunlash
+                      {checkAnswersMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Yuklanmoqda...
+                        </>
+                      ) : (
+                        "Yakunlash"
+                      )}
                     </Button>
                   ) : (
                     <Button
@@ -318,9 +402,17 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                   <Button
                     variant="outline"
                     className="w-full rounded-full text-xs md:text-sm"
-                    onClick={handleFinish}
+                    onClick={handleFinishClick}
+                    disabled={checkAnswersMutation.isPending}
                   >
-                    Testni yakunlash
+                    {checkAnswersMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Yuklanmoqda...
+                      </>
+                    ) : (
+                      "Testni yakunlash"
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -403,8 +495,13 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
                     </div>
                     <div className="flex justify-between">
                       <span>Qolgan:</span>
-                      <span className="font-medium text-orange-600 dark:text-orange-400">
-                        {allQuestions.length - Object.keys(selectedAnswers).length}
+                      <span className={cn(
+                        "font-medium",
+                        unansweredCount > 0 
+                          ? "text-orange-600 dark:text-orange-400" 
+                          : "text-green-600 dark:text-green-400"
+                      )}>
+                        {unansweredCount}
                       </span>
                     </div>
                   </div>
@@ -414,6 +511,26 @@ export default function TakeTestPage({ params }: { params: Promise<{ id: string 
           </div>
         </div>
       </div>
+
+      {/* Finish Confirmation Dialog */}
+      <AlertDialog open={showFinishDialog} onOpenChange={setShowFinishDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Testni yakunlashni xohlaysizmi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Siz {unansweredCount} ta savolga javob bermadingiz. 
+              Javob berilmagan savollar noto'g'ri deb hisoblanadi.
+              Testni yakunlashga ishonchingiz komilmi?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Bekor qilish</AlertDialogCancel>
+            <AlertDialogAction onClick={handleFinish}>
+              Ha, yakunlash
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

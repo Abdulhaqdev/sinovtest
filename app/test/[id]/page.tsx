@@ -13,7 +13,8 @@ import {
   Target,
   Loader2,
   AlertCircle,
-  Check
+  Check,
+  X
 } from "lucide-react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -24,22 +25,26 @@ import { useTestDetail } from "@/hooks/usehometest"
 import { useProfile } from "@/hooks/user-update"
 import { cn } from "@/lib/utils"
 import { useStartTest } from "@/hooks/use-start-test"
+import { useToast } from "@/hooks/use-toast"
 
 export default function TestDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params)
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { toast } = useToast()
   const testId = Number.parseInt(resolvedParams.id)
   
   const blockIdParam = searchParams.get("block_id")
   const subjectIdParam = searchParams.get("subject_id")
   
   const selectedBlock = blockIdParam ? Number.parseInt(blockIdParam) : 0
-  const [selectedSubjects, setSelectedSubjects] = useState<number[]>(
-    subjectIdParam ? [Number.parseInt(subjectIdParam)] : []
-  )
+  const apiSubjectId = subjectIdParam ? Number.parseInt(subjectIdParam) : 1
+  
+  // Subject'larni qo'lda tanlash uchun bo'sh array - URL'dan ta'sir qilmaydi
+  const [selectedSubjects, setSelectedSubjects] = useState<number[]>([])
 
-  const { data: testDetail, isLoading, error } = useTestDetail(testId, selectedBlock, selectedSubjects[0] || 0)
+  // API call uchun URL'dan kelgan subject_id ishlatamiz
+  const { data: testDetail, isLoading, error } = useTestDetail(testId, selectedBlock, apiSubjectId)
   const { data: profile, isLoading: profileLoading } = useProfile()
   const startTestMutation = useStartTest()
 
@@ -63,16 +68,25 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
     }
 
     if (!selectedBlock || selectedSubjects.length === 0) {
+      toast({
+        title: "Xatolik",
+        description: "Iltimos, fanlarni tanlang",
+        variant: "destructive",
+      })
       return
     }
 
-    // Check if selected subjects count matches required count
     if (testDetail && selectedSubjects.length !== testDetail.can_choose_count) {
+      toast({
+        title: "Xatolik",
+        description: `Aynan ${testDetail.can_choose_count} ta fan tanlashingiz kerak`,
+        variant: "destructive",
+      })
       return
     }
 
     try {
-      const result = await startTestMutation.mutateAsync({
+      await startTestMutation.mutateAsync({
         type_id: testId,
         block_id: selectedBlock,
         subject_id: selectedSubjects,
@@ -88,16 +102,25 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
     if (!testDetail) return
 
     setSelectedSubjects(prev => {
-      if (prev.includes(subjectId)) {
+      const isCurrentlySelected = prev.includes(subjectId)
+      
+      // Agar o'chirish bo'lsa
+      if (isCurrentlySelected) {
         return prev.filter(id => id !== subjectId)
-      } else {
-        // Check if we can add more subjects
-        if (prev.length >= testDetail.can_choose_count) {
-          // Remove first selected and add new one
-          return [...prev.slice(1), subjectId]
-        }
-        return [...prev, subjectId]
       }
+      
+      // Agar qo'shish bo'lsa, limitni qat'iy tekshirish
+      if (prev.length >= testDetail.can_choose_count) {
+        toast({
+          title: "Limit to'ldi",
+          description: `Maksimal ${testDetail.can_choose_count} ta fan tanlash mumkin`,
+          variant: "destructive",
+        })
+        return prev
+      }
+      
+      // Yangi fan qo'shish
+      return [...prev, subjectId]
     })
   }
 
@@ -133,8 +156,6 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
     profile?.surname && 
     selectedBlock && 
     selectedSubjects.length === testDetail.can_choose_count
-
-  const isMaxSelected = selectedSubjects.length >= testDetail.can_choose_count
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -235,7 +256,7 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </div>
 
-            {/* Multi-Select Subjects with Limit */}
+            {/* Multi-Select Subjects with Strict Limit */}
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -261,28 +282,57 @@ export default function TestDetailPage({ params }: { params: Promise<{ id: strin
                 <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 <AlertDescription className="text-blue-800 dark:text-blue-300">
                   Aynan <strong>{testDetail.can_choose_count}</strong> ta fan tanlashingiz kerak.
-                  {isMaxSelected && selectedSubjects.length < testDetail.can_choose_count && 
-                    " Yangi fan tanlash uchun birinchi tanlangan fan o'chiriladi."}
+                  {selectedSubjects.length > 0 && selectedSubjects.length < testDetail.can_choose_count && (
+                    <span className="block mt-1">
+                      Yana <strong>{testDetail.can_choose_count - selectedSubjects.length}</strong> ta fan tanlang.
+                    </span>
+                  )}
                 </AlertDescription>
               </Alert>
+
+              {/* Selected Subjects Pills */}
+              {selectedSubjects.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {selectedSubjects.map((subjectId) => {
+                    const subject = testDetail.subject.find(s => s.id === subjectId)
+                    if (!subject) return null
+                    
+                    return (
+                      <Badge
+                        key={subjectId}
+                        variant="secondary"
+                        className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 pl-3 pr-2 py-1.5 text-sm font-medium gap-1.5"
+                      >
+                        {subject.name}
+                        <button
+                          onClick={() => toggleSubject(subjectId)}
+                          className="hover:bg-blue-200 dark:hover:bg-blue-800 rounded-full p-0.5 transition-colors"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    )
+                  })}
+                </div>
+              )}
 
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {testDetail.subject.map((subject) => {
                   const isSelected = selectedSubjects.includes(subject.id)
-                  const isDisabled = !isSelected && isMaxSelected
+                  const canSelect = isSelected || selectedSubjects.length < testDetail.can_choose_count
                   
                   return (
                     <button
                       key={subject.id}
-                      onClick={() => !isDisabled && toggleSubject(subject.id)}
-                      disabled={isDisabled}
+                      onClick={() => toggleSubject(subject.id)}
+                      disabled={!canSelect}
                       className={cn(
                         "relative flex items-center justify-between h-auto py-3 px-4 text-left rounded-lg border-2 transition-all",
                         isSelected 
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950 dark:border-blue-400" 
-                          : isDisabled
-                            ? "border-gray-200 dark:border-gray-700 opacity-50 cursor-not-allowed"
-                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer"
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950 dark:border-blue-400 cursor-pointer" 
+                          : canSelect
+                            ? "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 cursor-pointer"
+                            : "border-gray-200 dark:border-gray-700 opacity-40 cursor-not-allowed"
                       )}
                     >
                       <span className={cn(
